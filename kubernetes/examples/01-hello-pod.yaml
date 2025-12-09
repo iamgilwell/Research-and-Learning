@@ -1,0 +1,36 @@
+# Simple Hello World Pod
+# Demonstrates basic pod structure and container specification
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-nginx
+  labels:
+    app: hello
+    version: v1
+    environment: learning
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.21
+    ports:
+    - containerPort: 80
+      name: http
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+    env:
+    - name: NGINX_PORT
+      value: "80"
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP

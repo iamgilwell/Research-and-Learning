@@ -1,0 +1,103 @@
+# Health Checks Example
+# Demonstrates liveness, readiness, and startup probes
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: health-check-demo
+  labels:
+    app: health-demo
+spec:
+  containers:
+  - name: web-app
+    image: nginx:1.21
+    ports:
+    - containerPort: 80
+      name: http
+    
+    # Startup probe - for slow-starting applications
+    startupProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 6  # Allow up to 30 seconds for startup
+      successThreshold: 1
+    
+    # Liveness probe - restart container if this fails
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+        httpHeaders:
+        - name: Custom-Header
+          value: liveness-check
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    
+    # Readiness probe - remove from service endpoints if this fails
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+        httpHeaders:
+        - name: Custom-Header
+          value: readiness-check
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+      successThreshold: 1
+    
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+    
+    # Create a custom health endpoint
+    volumeMounts:
+    - name: health-config
+      mountPath: /etc/nginx/conf.d
+  
+  volumes:
+  - name: health-config
+    configMap:
+      name: nginx-health-config
+
+---
+# ConfigMap for custom nginx configuration with health endpoint
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-health-config
+data:
+  health.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+        
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+        }
+        
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+        
+        location /ready {
+            access_log off;
+            return 200 "ready\n";
+            add_header Content-Type text/plain;
+        }
+    }
